@@ -21,7 +21,7 @@ def insert_test_data():
         response = requests.post(f"{base_url}/categories", json=category)
         if response.status_code != 201:
             print(f"Failed to add category {category['name']}: {response.text}")
-            sys.exit(1)  # Exit the script if category insertion fails
+            sys.exit(1)
         else:
             print(f"Added category: {category['name']}")
     
@@ -29,7 +29,7 @@ def insert_test_data():
     response = requests.get(f"{base_url}/categories")
     if response.status_code != 200:
         print("Failed to get categories")
-        return
+        sys.exit(1)
     categories = response.json()
     category_map = {cat['name']: cat['id'] for cat in categories}
     
@@ -56,9 +56,25 @@ def insert_test_data():
         response = requests.post(f"{base_url}/sites", json=site)
         if response.status_code != 201:
             print(f"Failed to add site {site['name']}: {response.text}")
-            sys.exit(1)  # Exit the script if site insertion fails
+            sys.exit(1)
         else:
             print(f"Added site: {site['name']}")
+
+    # Test getting site title
+    response = requests.get(f"{base_url}/sites/title?id=1")
+    if response.status_code != 200:
+        print(f"Failed to get site title. Status code: {response.status_code}")
+        print(f"Response text: {response.text}")
+    else:
+        try:
+            title = response.json().get('title')
+            if title:
+                print(f"Got site title: {title}")
+            else:
+                print("Site title not found in response")
+        except requests.exceptions.JSONDecodeError:
+            print("Failed to decode JSON response")
+            print(f"Response text: {response.text}")
 
 if __name__ == "__main__":
     insert_test_data()

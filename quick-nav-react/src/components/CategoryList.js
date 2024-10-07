@@ -1,25 +1,74 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { Grid, Button } from '@mui/material';
+import { Link } from 'react-router-dom';
+import { fetchCategories, fetchSites, updateCategoriesOrder, updateCategory as apiUpdateCategory, deleteCategory as apiDeleteCategory, updateSite as apiUpdateSite, deleteSite as apiDeleteSite } from '../api';
+import EditableCategoryList from './EditableCategoryList';
 
-const CategoryList = ({ categories, sites, updateCategoryOrder, updateCategory, deleteCategory, updateSite, deleteSite }) => {
+const CategoryList = ({ isEditable }) => {
+    const [categories, setCategories] = useState([]);
+    const [sites, setSites] = useState([]);
+
+    const loadData = async () => {
+        const fetchedCategories = await fetchCategories();
+        const fetchedSites = await fetchSites();
+        setCategories(fetchedCategories);
+        setSites(fetchedSites);
+    };
+
+    useEffect(() => {
+        loadData();
+    }, []);
+
+    const handleCategoriesOrderChange = () => {
+        loadData();
+    };
+
+    const updateCategory = async (id, name) => {
+        const success = await apiUpdateCategory(id, name);
+        if (success) {
+            loadData();
+        }
+    };
+
+    const deleteCategory = async (id) => {
+        const success = await apiDeleteCategory(id);
+        if (success) {
+            loadData();
+        }
+    };
+
+    const updateSite = async (id, name, url, categoryId) => {
+        const success = await apiUpdateSite(id, name, url, categoryId);
+        if (success) {
+            loadData();
+        }
+    };
+
+    const deleteSite = async (id) => {
+        const success = await apiDeleteSite(id);
+        if (success) {
+            loadData();
+        }
+    };
+
     return (
-        <div className="category-list">
-            {categories.map((category) => (
-                <div key={category.id} className="category">
-                    <h2>{category.name}</h2>
-                    <ul>
-                        {sites
-                            .filter((site) => site.category_id === category.id)
-                            .map((site) => (
-                                <li key={site.id}>
-                                    <a href={site.url} target="_blank" rel="noopener noreferrer">
-                                        {site.name}
-                                    </a>
-                                </li>
-                            ))}
-                    </ul>
-                </div>
-            ))}
-        </div>
+        <>
+            <Button component={Link} to={isEditable ? "/" : "/edit"} sx={{ mb: 2 }}>
+                {isEditable ? 'View Mode' : 'Edit Mode'}
+            </Button>
+            <Grid container spacing={2}>
+                <EditableCategoryList
+                    categories={categories}
+                    sites={sites}
+                    updateCategory={updateCategory}
+                    deleteCategory={deleteCategory}
+                    updateSite={updateSite}
+                    deleteSite={deleteSite}
+                    onCategoriesOrderChange={handleCategoriesOrderChange}
+                    isEditable={isEditable}
+                />
+            </Grid>
+        </>
     );
 };
 

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { TextField, Button, Box, MenuItem } from '@mui/material';
 
 const AddSiteForm = ({ addSite, categories }) => {
     const [name, setName] = useState('');
@@ -16,32 +17,46 @@ const AddSiteForm = ({ addSite, categories }) => {
     };
 
     return (
-        <form onSubmit={handleSubmit} className="add-site-form">
-            <input
-                type="text"
+        <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField
+                fullWidth
+                variant="outlined"
+                size="small"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Site name"
             />
-            <input
+            <TextField
+                fullWidth
+                variant="outlined"
+                size="small"
                 type="url"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="Site URL"
             />
-            <select
+            <TextField
+                select
+                fullWidth
+                variant="outlined"
+                size="small"
                 value={categoryId}
                 onChange={(e) => setCategoryId(e.target.value)}
+                placeholder="Select a category"
             >
-                <option value="">Select a category</option>
+                <MenuItem value="">
+                    <em>Select a category</em>
+                </MenuItem>
                 {categories.map((category) => (
-                    <option key={category.id} value={category.id}>
+                    <MenuItem key={category.id} value={category.id}>
                         {category.name}
-                    </option>
+                    </MenuItem>
                 ))}
-            </select>
-            <button type="submit">Add Site</button>
-        </form>
+            </TextField>
+            <Button type="submit" variant="contained" color="primary">
+                Add Site
+            </Button>
+        </Box>
     );
 };
 

@@ -32,7 +32,23 @@ func initDB() {
 		log.Fatal(err)
 	}
 
+	// 执行原有的 schema
 	_, err = db.Exec(schema)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// 添加以下代码来移除 UNIQUE 约束
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS categories_new (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT NOT NULL,
+			order_num INTEGER NOT NULL
+		);
+		INSERT INTO categories_new SELECT * FROM categories;
+		DROP TABLE categories;
+		ALTER TABLE categories_new RENAME TO categories;
+	`)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -140,12 +156,61 @@ func deleteSite(id int) error {
 	return err
 }
 
+// Add these two new functions to the db.go file
+
 func updateCategory(id int, name string) error {
 	_, err := db.Exec("UPDATE categories SET name = ? WHERE id = ?", name, id)
 	return err
 }
 
 func deleteCategory(id int) error {
-	_, err := db.Exec("DELETE FROM categories WHERE id = ?", id)
-	return err
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// First, delete all sites associated with this category
+	_, err = tx.Exec("DELETE FROM sites WHERE category_id = ?", id)
+	if err != nil {
+		return err
+	}
+
+	// Then, delete the category itself
+	_, err = tx.Exec("DELETE FROM categories WHERE id = ?", id)
+	if err != nil {
+		return err
+	}
+
+	// Finally, reorder the remaining categories
+	_, err = tx.Exec("UPDATE categories SET order_num = order_num - 1 WHERE order_num > (SELECT order_num FROM categories WHERE id = ?)", id)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func updateCategoriesOrder(categories []Category) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// 首先，将所有 order_num 设置为负值，避免唯一性冲突
+	_, err = tx.Exec("UPDATE categories SET order_num = -order_num")
+	if err != nil {
+		return err
+	}
+
+	// 然后，更新为新的顺序
+	for _, category := range categories {
+		_, err := tx.Exec("UPDATE categories SET order_num = ? WHERE id = ?", category.Order, category.ID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
