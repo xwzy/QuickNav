@@ -1,7 +1,9 @@
 package main
 
 import (
+	"embed"
 	"io"
+	"io/fs"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -328,8 +330,12 @@ func setupMainServer() {
 	apiURL, _ := url.Parse("http://localhost:8080")
 	apiProxy := httputil.NewSingleHostReverseProxy(apiURL)
 
-	// Create a file server for serving static files
-	fileServer := http.FileServer(http.Dir("./web"))
+	// Create a file server for serving static files from the embedded filesystem
+	fsys, err := fs.Sub(webFS, "web")
+	if err != nil {
+		log.Fatalf("Failed to create sub-filesystem: %v", err)
+	}
+	fileServer := http.FileServer(http.FS(fsys))
 
 	// Set up the main server
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -343,9 +349,11 @@ func setupMainServer() {
 	})
 
 	log.Println("Main server starting on port 80")
-	err := http.ListenAndServe(":80", nil)
+	err = http.ListenAndServe(":80", nil)
 	if err != nil {
 		log.Fatalf("Failed to start main server: %v", err)
 	}
-
 }
+
+//go:embed web
+var webFS embed.FS
