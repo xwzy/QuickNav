@@ -18,24 +18,72 @@ jobs:
         steps:
             - uses: actions/checkout@v3
 
-            - name: Build and Release
-              uses: wangyoucao577/go-release-action@v1.30
+            - name: Set up Go
+              uses: actions/setup-go@v4
               with:
-                  github_token: ${{ secrets.GITHUB_TOKEN }}
-                  goos: ${{ matrix.goos }}
-                  goarch: ${{ matrix.goarch }}
-                  goversion: "1.20"
-                  binary_name: "quicknav"
-                  extra_files: README.md
-                  project_path: "."
-                  build_flags: "-v"
-                  ldflags: "-s -w"
-                  pre_command: go mod tidy
-                  md5sum: false
-                  sha256sum: true
+                  go-version: "1.20"
+
+            - name: Build
+              env:
+                  GOOS: ${{ matrix.goos }}
+                  GOARCH: ${{ matrix.goarch }}
+              run: |
+                  go mod tidy
+                  go build -v -ldflags="-s -w" -o quicknav-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }}
+
+            - name: Package
+              run: |
+                  if [ "${{ matrix.goos }}" = "windows" ]; then
+                      zip quicknav-${{ matrix.goos }}-${{ matrix.goarch }}.zip quicknav-${{ matrix.goos }}-${{ matrix.goarch }}.exe README.md
+                  else
+                      tar -czvf quicknav-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz quicknav-${{ matrix.goos }}-${{ matrix.goarch }} README.md
+                  fi
+
+            - name: Generate SHA256
+              run: |
+                  if [ "${{ matrix.goos }}" = "windows" ]; then
+                      sha256sum quicknav-${{ matrix.goos }}-${{ matrix.goarch }}.zip > quicknav-${{ matrix.goos }}-${{ matrix.goarch }}.zip.sha256
+                  else
+                      sha256sum quicknav-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz > quicknav-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz.sha256
+                  fi
+
+            - name: Upload Release Asset
+              uses: actions/upload-release-asset@v1
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              with:
+                  upload_url: ${{ steps.create_release.outputs.upload_url }}
+                  asset_path: ./quicknav-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.zip' || '.tar.gz' }}
+                  asset_name: quicknav-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.zip' || '.tar.gz' }}
+                  asset_content_type: application/octet-stream
+
+            - name: Upload SHA256
+              uses: actions/upload-release-asset@v1
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              with:
+                  upload_url: ${{ steps.create_release.outputs.upload_url }}
+                  asset_path: ./quicknav-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.zip' || '.tar.gz' }}.sha256
+                  asset_name: quicknav-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.zip' || '.tar.gz' }}.sha256
+                  asset_content_type: text/plain
+
+    create-release:
+        needs: build-and-release
+        runs-on: ubuntu-latest
+        steps:
+            - name: Create Release
+              id: create_release
+              uses: actions/create-release@v1
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              with:
+                  tag_name: ${{ github.ref }}
+                  release_name: Release ${{ github.ref }}
+                  draft: false
+                  prerelease: false
 
     update-release-draft:
-        needs: build-and-release
+        needs: create-release
         runs-on: ubuntu-latest
         steps:
             - uses: release-drafter/release-drafter@v5
