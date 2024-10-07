@@ -315,31 +315,40 @@ func main() {
 	// Static file server
 	r.StaticFS("/static", http.FS(webFS))
 
-	// Reverse proxy for root requests to localhost:3000
-	r.NoRoute(func(c *gin.Context) {
-		remote, err := url.Parse("http://localhost:3000")
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse upstream URL"})
-			return
-		}
+	// Check the environment mode
+	mode := os.Getenv("APP_MODE")
+	if mode == "dev" {
+		// Dev mode: Reverse proxy for root requests to localhost:3000
+		r.NoRoute(func(c *gin.Context) {
+			remote, err := url.Parse("http://localhost:3000")
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse upstream URL"})
+				return
+			}
 
-		proxy := httputil.NewSingleHostReverseProxy(remote)
-		proxy.Director = func(req *http.Request) {
-			req.Header = c.Request.Header
-			req.Host = remote.Host
-			req.URL.Scheme = remote.Scheme
-			req.URL.Host = remote.Host
-			req.URL.Path = c.Request.URL.Path
-		}
+			proxy := httputil.NewSingleHostReverseProxy(remote)
+			proxy.Director = func(req *http.Request) {
+				req.Header = c.Request.Header
+				req.Host = remote.Host
+				req.URL.Scheme = remote.Scheme
+				req.URL.Host = remote.Host
+				req.URL.Path = c.Request.URL.Path
+			}
 
-		proxy.ServeHTTP(c.Writer, c.Request)
-	})
+			proxy.ServeHTTP(c.Writer, c.Request)
+		})
+	} else {
+		// Prod mode: Serve embedded web files
+		r.NoRoute(func(c *gin.Context) {
+			c.FileFromFS(c.Request.URL.Path, http.FS(webFS))
+		})
+	}
 
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
-	log.Printf("Server starting on port %s\n", port)
+	log.Printf("Server starting on port %s in %s mode\n", port, mode)
 	r.Run("0.0.0.0:" + port)
 }
