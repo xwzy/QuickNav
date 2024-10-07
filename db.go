@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"log"
+	"os"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -27,31 +28,79 @@ CREATE TABLE IF NOT EXISTS sites (
 
 func initDB() {
 	var err error
-	db, err = sql.Open("sqlite3", "./nav.db")
+	dbFile := "./nav.db"
+
+	// Check if the database file exists
+	_, err = os.Stat(dbFile)
+	dbExists := !os.IsNotExist(err)
+
+	db, err = sql.Open("sqlite3", dbFile)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// 执行原有的 schema
 	_, err = db.Exec(schema)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// 添加以下代码来移除 UNIQUE 约束
-	_, err = db.Exec(`
-		CREATE TABLE IF NOT EXISTS categories_new (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			name TEXT NOT NULL,
-			order_num INTEGER NOT NULL
-		);
-		INSERT INTO categories_new SELECT * FROM categories;
-		DROP TABLE categories;
-		ALTER TABLE categories_new RENAME TO categories;
-	`)
-	if err != nil {
-		log.Fatal(err)
+	// If the database didn't exist, insert sample data
+	if !dbExists {
+		err = insertSampleData()
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
+}
+
+func insertSampleData() error {
+	categories := []string{"搜索引擎", "社交媒体", "新闻网站", "在线购物", "视频网站", "工具网站"}
+	sites := []struct {
+		name       string
+		url        string
+		categoryID int
+	}{
+		{"百度", "https://www.baidu.com", 1},
+		{"搜狗", "https://www.sogou.com", 1},
+		{"360搜索", "https://www.so.com", 1},
+		{"微博", "https://www.weibo.com", 2},
+		{"知乎", "https://www.zhihu.com", 2},
+		{"豆瓣", "https://www.douban.com", 2},
+		{"新浪新闻", "https://news.sina.com.cn", 3},
+		{"腾讯新闻", "https://news.qq.com", 3},
+		{"网易新闻", "https://news.163.com", 3},
+		{"淘宝", "https://www.taobao.com", 4},
+		{"京东", "https://www.jd.com", 4},
+		{"拼多多", "https://www.pinduoduo.com", 4},
+		{"哔哩哔哩", "https://www.bilibili.com", 5},
+		{"优酷", "https://www.youku.com", 5},
+		{"爱奇艺", "https://www.iqiyi.com", 5},
+		{"百度翻译", "https://fanyi.baidu.com", 6},
+		{"有道词典", "https://dict.youdao.com", 6},
+		{"12306", "https://www.12306.cn", 6},
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	for i, category := range categories {
+		_, err := tx.Exec("INSERT INTO categories (name, order_num) VALUES (?, ?)", category, i+1)
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, site := range sites {
+		_, err := tx.Exec("INSERT INTO sites (name, url, category_id) VALUES (?, ?, ?)", site.name, site.url, site.categoryID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 func getCategories() ([]Category, error) {
@@ -198,7 +247,7 @@ func updateCategoriesOrder(categories []Category) error {
 	}
 	defer tx.Rollback()
 
-	// 首先，将所有 order_num 设置为负值，避免唯一性冲突
+	// 首���，将所有 order_num 设置为负值，避免唯一性冲突
 	_, err = tx.Exec("UPDATE categories SET order_num = -order_num")
 	if err != nil {
 		return err
