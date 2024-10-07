@@ -27,14 +27,31 @@ jobs:
                   go-version-file: go.mod
                   check-latest: true
 
+            - name: Set up cross-compilation environment
+              run: |
+                  if [ "${{ matrix.goos }}" = "windows" ]; then
+                    sudo apt-get update && sudo apt-get install -y gcc-mingw-w64
+                  elif [ "${{ matrix.goos }}" = "darwin" ]; then
+                    sudo apt-get update && sudo apt-get install -y clang llvm-dev libxml2-dev uuid-dev libssl-dev libbz2-dev
+                    wget https://github.com/tpoechtrager/osxcross/releases/download/v11/osxcross-11.tar.xz
+                    sudo tar xf osxcross-11.tar.xz -C /usr/local
+                    echo 'export PATH="/usr/local/osxcross/bin:$PATH"' >> $GITHUB_ENV
+                    echo 'export OSXCROSS_SDK=/usr/local/osxcross/SDK/MacOSX11.3.sdk' >> $GITHUB_ENV
+                  fi
+
             - name: Build
               env:
                   GOOS: ${{ matrix.goos }}
                   GOARCH: ${{ matrix.goarch }}
                   CGO_ENABLED: 1
               run: |
-                  go mod tidy
-                  go build -v -ldflags="-s -w -X main.version=${{ github.ref_name }}" -o quicknav-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }}
+                  if [ "${{ matrix.goos }}" = "windows" ]; then
+                    CC=x86_64-w64-mingw32-gcc go build -v -ldflags="-s -w -X main.version=${{ github.ref_name }}" -o quicknav-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }}
+                  elif [ "${{ matrix.goos }}" = "darwin" ]; then
+                    CC=o64-clang go build -v -ldflags="-s -w -X main.version=${{ github.ref_name }}" -o quicknav-${{ matrix.goos }}-${{ matrix.goarch }}
+                  else
+                    go build -v -ldflags="-s -w -X main.version=${{ github.ref_name }}" -o quicknav-${{ matrix.goos }}-${{ matrix.goarch }}
+                  fi
 
             - name: Package
               run: |
