@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Grid, Button } from '@mui/material';
-import { Link } from 'react-router-dom';
+import { Grid } from '@mui/material';
 import { fetchCategories, fetchSites, updateCategoriesOrder, updateCategory as apiUpdateCategory, deleteCategory as apiDeleteCategory, updateSite as apiUpdateSite, deleteSite as apiDeleteSite } from '../api';
 import EditableCategoryList from './EditableCategoryList';
 
@@ -52,23 +51,18 @@ const CategoryList = ({ isEditable }) => {
     };
 
     return (
-        <>
-            <Button component={Link} to={isEditable ? "/" : "/edit"} sx={{ mb: 2 }}>
-                {isEditable ? 'View Mode' : 'Edit Mode'}
-            </Button>
-            <Grid container spacing={2}>
-                <EditableCategoryList
-                    categories={categories}
-                    sites={sites}
-                    updateCategory={updateCategory}
-                    deleteCategory={deleteCategory}
-                    updateSite={updateSite}
-                    deleteSite={deleteSite}
-                    onCategoriesOrderChange={handleCategoriesOrderChange}
-                    isEditable={isEditable}
-                />
-            </Grid>
-        </>
+        <Grid container spacing={2}>
+            <EditableCategoryList
+                categories={categories}
+                sites={sites}
+                updateCategory={updateCategory}
+                deleteCategory={deleteCategory}
+                updateSite={updateSite}
+                deleteSite={deleteSite}
+                onCategoriesOrderChange={handleCategoriesOrderChange}
+                isEditable={isEditable}
+            />
+        </Grid>
     );
 };
 
