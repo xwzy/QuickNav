@@ -31,9 +31,16 @@ jobs:
               env:
                   GOOS: ${{ matrix.goos }}
                   GOARCH: ${{ matrix.goarch }}
+                  CGO_ENABLED: 1
               run: |
                   go mod tidy
                   go build -v -ldflags="-s -w -X main.version=${{ github.ref_name }}" -o quicknav-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }}
+
+            # Add a new step to install cross-compilation tools
+            - name: Set up cross-compilation
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y gcc-aarch64-linux-gnu gcc-mingw-w64-x86-64 gcc-darwin-x86-64
 
             - name: Package
               run: |
