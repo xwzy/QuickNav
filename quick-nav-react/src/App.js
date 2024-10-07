@@ -150,10 +150,11 @@ function App() {
               deleteCategory={deleteCategory}
               updateSite={updateSite}
               deleteSite={deleteSite}
+              isEditable={false}
             />
           } />
           <Route path="/edit" element={
-            <EditableCategoryList
+            <CategoryList
               categories={categories}
               sites={sites}
               updateCategory={updateCategory}
@@ -161,6 +162,7 @@ function App() {
               updateSite={updateSite}
               deleteSite={deleteSite}
               reorderCategory={handleReorderCategory}
+              isEditable={true}
             />
           } />
         </Routes>
