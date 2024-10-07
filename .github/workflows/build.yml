@@ -12,7 +12,6 @@ concurrency:
 jobs:
     build-and-release:
         runs-on: ubuntu-latest
-        permissions: write-all
         strategy:
             matrix:
                 goos: [linux, windows, darwin]
