@@ -79,3 +79,4 @@ def insert_test_data():
 if __name__ == "__main__":
     insert_test_data()
     print("Test data insertion completed.")
+

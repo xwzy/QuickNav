@@ -2,6 +2,8 @@
 
 QuickNav is a lightweight, efficient web navigation tool built with Go and SQLite. It provides a personalized hub for quick access to your favorite websites.
 
+[中文版 README](README_zh.md)
+
 ## Description
 
 QuickNav serves as your personal internet compass, offering a clean and intuitive interface to manage and access your frequently visited websites. Built with simplicity and efficiency in mind, it's perfect for developers, students, or anyone looking to streamline their web browsing experience.
