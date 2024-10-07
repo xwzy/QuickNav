@@ -1,0 +1,56 @@
+name: Build Go Binary
+
+on:
+    push:
+        branches: [release]
+
+jobs:
+    build:
+        name: Build on ${{ matrix.os }}-${{ matrix.arch }}
+        runs-on: ${{ matrix.os }}
+        strategy:
+            matrix:
+                include:
+                    - os: ubuntu-latest
+                      arch: amd64
+                    - os: ubuntu-latest
+                      arch: arm64
+                    - os: macos-latest
+                      arch: amd64
+                    - os: macos-latest
+                      arch: arm64
+                    - os: windows-latest
+                      arch: amd64
+
+        steps:
+            - uses: actions/checkout@v3
+
+            - name: Set up Go
+              uses: actions/setup-go@v4
+              with:
+                  go-version: "1.20"
+
+            - name: Set GOOS
+              run: echo "GOOS=${{ runner.os == 'Windows' && 'windows' || runner.os == 'macOS' && 'darwin' || 'linux' }}" >> $GITHUB_ENV
+
+            - name: Build
+              env:
+                  GOOS: ${{ matrix.os == 'windows-latest' && 'windows' || matrix.os == 'ubuntu-latest' && 'linux' || 'darwin' }}
+                  GOARCH: ${{ matrix.arch }}
+              run: |
+                  go build -o quicknav main.go db.go
+
+            - name: Package (Non-Windows)
+              if: matrix.os != 'windows-latest'
+              run: tar -czvf quicknav-${{ env.GOOS }}-${{ matrix.arch }}.tar.gz quicknav
+
+            - name: Package (Windows)
+              if: matrix.os == 'windows-latest'
+              run: Compress-Archive -Path quicknav.exe -DestinationPath quicknav-windows-${{ matrix.arch }}.zip
+
+            - name: Upload artifact
+              uses: actions/upload-artifact@v3
+              with:
+                  name: quicknav-${{ matrix.os }}-${{ matrix.arch }}
+                  path: quicknav-*.*
+                  if-no-files-found: error
