@@ -4,6 +4,14 @@ QuickNav is a lightweight, efficient web navigation tool built with Go and SQLit
 
 [中文版 README](README_zh.md)
 
+## Viewer
+
+![alt text](image.png)
+
+## Editor
+
+![alt text](image-1.png)
+
 ## Description
 
 QuickNav serves as your personal internet compass, offering a clean and intuitive interface to manage and access your frequently visited websites. Built with simplicity and efficiency in mind, it's perfect for developers, students, or anyone looking to streamline their web browsing experience.
@@ -34,24 +42,6 @@ QuickNav serves as your personal internet compass, offering a clean and intuitiv
 5. Start adding your favorite websites!
 
 Note: The first time you run QuickNav, it will create a `nav.db` file in the same directory. This file stores your website links.
-
-## Building from Source
-
-If you want to build QuickNav from source:
-
-1. Ensure you have Go installed on your system.
-2. Clone this repository:
-    ```
-    git clone https://github.com/xwzy/QuickNav.git
-    ```
-3. Navigate to the project directory:
-    ```
-    cd QuickNav
-    ```
-4. Build the project:
-    ```
-    go build
-    ```
 
 ## Contributing
 
