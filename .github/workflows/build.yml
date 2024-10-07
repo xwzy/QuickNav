@@ -1,4 +1,4 @@
-name: Build Go Binary
+name: Build and Release Go Binary
 
 on:
     push:
@@ -6,79 +6,38 @@ on:
             - "v*.*.*"
 
 jobs:
-    build:
-        name: Build on ${{ matrix.os }}-${{ matrix.arch }}
-        runs-on: ${{ matrix.os }}
+    build-and-release:
+        runs-on: ubuntu-latest
         strategy:
             matrix:
-                include:
-                    - os: ubuntu-latest
-                      arch: amd64
-                    - os: ubuntu-latest
-                      arch: arm64
-                    - os: macos-latest
-                      arch: amd64
-                    - os: macos-latest
-                      arch: arm64
-                    - os: windows-latest
-                      arch: amd64
-
+                goos: [linux, windows, darwin]
+                goarch: [amd64, arm64]
+                exclude:
+                    - goarch: arm64
+                      goos: windows
         steps:
             - uses: actions/checkout@v3
 
-            - name: Set up Go
-              uses: actions/setup-go@v4
+            - name: Build and Release
+              uses: wangyoucao577/go-release-action@v1.30
               with:
-                  go-version: "1.20"
+                  github_token: ${{ secrets.GITHUB_TOKEN }}
+                  goos: ${{ matrix.goos }}
+                  goarch: ${{ matrix.goarch }}
+                  goversion: "1.20"
+                  binary_name: "quicknav"
+                  extra_files: README.md
+                  project_path: "."
+                  build_flags: "-v"
+                  ldflags: "-s -w"
+                  pre_command: go mod tidy
+                  md5sum: false
+                  sha256sum: true
 
-            - name: Set GOOS
-              run: echo "GOOS=${{ runner.os == 'Windows' && 'windows' || runner.os == 'macOS' && 'darwin' || 'linux' }}" >> $GITHUB_ENV
-
-            - name: Build
-              env:
-                  GOOS: ${{ matrix.os == 'windows-latest' && 'windows' || matrix.os == 'ubuntu-latest' && 'linux' || 'darwin' }}
-                  GOARCH: ${{ matrix.arch }}
-              run: |
-                  go build -o quicknav main.go db.go
-
-            - name: Package (Non-Windows)
-              if: matrix.os != 'windows-latest'
-              run: tar -czvf quicknav-${{ env.GOOS }}-${{ matrix.arch }}.tar.gz quicknav
-
-            - name: Package (Windows)
-              if: matrix.os == 'windows-latest'
-              run: Compress-Archive -Path quicknav.exe -DestinationPath quicknav-windows-${{ matrix.arch }}.zip
-
-            - name: Upload artifact
-              uses: actions/upload-artifact@v3
-              with:
-                  name: quicknav-${{ matrix.os }}-${{ matrix.arch }}
-                  path: quicknav-*.*
-                  if-no-files-found: error
-
-    create-release:
-        needs: build
+    update-release-draft:
+        needs: build-and-release
         runs-on: ubuntu-latest
         steps:
-            - name: Create Release
-              id: create_release
-              uses: actions/create-release@v1
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              with:
-                  tag_name: ${{ github.ref }}
-                  release_name: Release ${{ github.ref }}
-                  draft: true
-                  prerelease: false
-
-            - name: Download Artifacts
-              uses: actions/download-artifact@v2
-              with:
-                  path: artifacts
-
-            - name: Upload Release Assets
-              uses: softprops/action-gh-release@v1
-              with:
-                  files: artifacts/**/*
+            - uses: release-drafter/release-drafter@v5
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
