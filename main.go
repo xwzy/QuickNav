@@ -4,7 +4,10 @@ import (
 	"embed"
 	"log"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
+	"strconv"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -47,6 +50,35 @@ func apiSitesHandler(c *gin.Context) {
 			return
 		}
 		c.JSON(http.StatusCreated, site)
+	case "PUT":
+		var site Site
+		if err := c.ShouldBindJSON(&site); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		err := updateSite(site.ID, site.Name, site.URL, site.CategoryID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "Site updated successfully"})
+	case "DELETE":
+		id := c.Query("id")
+		if id == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Missing site ID"})
+			return
+		}
+		siteID, err := strconv.Atoi(id)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid site ID"})
+			return
+		}
+		err = deleteSite(siteID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "Site deleted successfully"})
 	default:
 		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "method not allowed"})
 	}
@@ -79,12 +111,37 @@ func apiCategoriesHandler(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		err := updateCategoryOrder(category.ID, category.Order)
+		if category.Order != 0 {
+			err := updateCategoryOrder(category.ID, category.Order)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+		} else {
+			err := updateCategory(category.ID, category.Name)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "Category updated successfully"})
+	case "DELETE":
+		id := c.Query("id")
+		if id == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Missing category ID"})
+			return
+		}
+		categoryID, err := strconv.Atoi(id)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid category ID"})
+			return
+		}
+		err = deleteCategory(categoryID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"message": "Category order updated successfully"})
+		c.JSON(http.StatusOK, gin.H{"message": "Category deleted successfully"})
 	default:
 		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "method not allowed"})
 	}
@@ -102,10 +159,32 @@ func main() {
 	config.AllowHeaders = []string{"Origin", "Content-Type", "Authorization"}
 	r.Use(cors.New(config))
 
-	r.StaticFS("/", http.FS(webFS))
-
+	// API routes
 	r.Any("/api/sites", apiSitesHandler)
 	r.Any("/api/categories", apiCategoriesHandler)
+
+	// Static file server
+	r.StaticFS("/static", http.FS(webFS))
+
+	// Reverse proxy for root requests to localhost:3000
+	r.NoRoute(func(c *gin.Context) {
+		remote, err := url.Parse("http://localhost:3000")
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse upstream URL"})
+			return
+		}
+
+		proxy := httputil.NewSingleHostReverseProxy(remote)
+		proxy.Director = func(req *http.Request) {
+			req.Header = c.Request.Header
+			req.Host = remote.Host
+			req.URL.Scheme = remote.Scheme
+			req.URL.Host = remote.Host
+			req.URL.Path = c.Request.URL.Path
+		}
+
+		proxy.ServeHTTP(c.Writer, c.Request)
+	})
 
 	port := os.Getenv("PORT")
 	if port == "" {

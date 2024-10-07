@@ -129,3 +129,23 @@ func closeDB() {
 		db.Close()
 	}
 }
+
+func updateSite(id int, name, url string, categoryID int) error {
+	_, err := db.Exec("UPDATE sites SET name = ?, url = ?, category_id = ? WHERE id = ?", name, url, categoryID, id)
+	return err
+}
+
+func deleteSite(id int) error {
+	_, err := db.Exec("DELETE FROM sites WHERE id = ?", id)
+	return err
+}
+
+func updateCategory(id int, name string) error {
+	_, err := db.Exec("UPDATE categories SET name = ? WHERE id = ?", name, id)
+	return err
+}
+
+func deleteCategory(id int) error {
+	_, err := db.Exec("DELETE FROM categories WHERE id = ?", id)
+	return err
+}
