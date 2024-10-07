@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 var db *sql.DB
@@ -34,7 +34,7 @@ func initDB() {
 	_, err = os.Stat(dbFile)
 	dbExists := !os.IsNotExist(err)
 
-	db, err = sql.Open("sqlite3", dbFile)
+	db, err = sql.Open("sqlite", dbFile)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -247,7 +247,7 @@ func updateCategoriesOrder(categories []Category) error {
 	}
 	defer tx.Rollback()
 
-	// 首���，将所有 order_num 设置为负值，避免唯一性冲突
+	// 首，将所有 order_num 设置为负值，避免唯一性冲突
 	_, err = tx.Exec("UPDATE categories SET order_num = -order_num")
 	if err != nil {
 		return err
