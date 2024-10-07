@@ -19,7 +19,7 @@ jobs:
               with:
                   tag_name: ${{ github.ref }}
                   release_name: Release ${{ github.ref }}
-                  draft: false
+                  draft: true
                   prerelease: false
 
     build-and-release:
@@ -38,7 +38,7 @@ jobs:
             - name: Set up Go
               uses: actions/setup-go@v4
               with:
-                  go-version: "1.20"
+                  go-version: "1.21"
 
             - name: Build
               env:
@@ -46,7 +46,7 @@ jobs:
                   GOARCH: ${{ matrix.goarch }}
               run: |
                   go mod tidy
-                  go build -v -ldflags="-s -w" -o quicknav-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }}
+                  go build -v -ldflags="-s -w -X main.version=${{ github.ref_name }}" -o quicknav-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }}
 
             - name: Package
               run: |
@@ -83,11 +83,3 @@ jobs:
                   asset_path: ./quicknav-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.zip' || '.tar.gz' }}.sha256
                   asset_name: quicknav-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.zip' || '.tar.gz' }}.sha256
                   asset_content_type: text/plain
-
-    update-release-draft:
-        needs: [create-release, build-and-release]
-        runs-on: ubuntu-latest
-        steps:
-            - uses: release-drafter/release-drafter@v5
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
