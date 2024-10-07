@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Box, AppBar, Toolbar, Typography, Container, Paper, ThemeProvider, CssBaseline, useMediaQuery } from '@mui/material';
+import { Button, Box, AppBar, Toolbar, Typography, Container, Paper, ThemeProvider, CssBaseline, useMediaQuery, IconButton } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import GitHubIcon from '@mui/icons-material/GitHub';
 import './App.css';
 import CategoryList from './components/CategoryList';
 import AddCategoryForm from './components/AddCategoryForm';
@@ -191,6 +192,16 @@ function App() {
               <Typography variant="h4" component="h1" sx={{ flexGrow: 1, fontWeight: 600 }}>
                 Quick Navigation
               </Typography>
+              <IconButton
+                color="inherit"
+                aria-label="GitHub repository"
+                component="a"
+                href="https://github.com/xwzy/QuickNav"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <GitHubIcon />
+              </IconButton>
             </Toolbar>
           </AppBar>
           <Box component="main" sx={{ flexGrow: 1, bgcolor: 'background.default', py: 3 }}>
