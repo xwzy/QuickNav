@@ -31,10 +31,10 @@ jobs:
               env:
                   GOOS: ${{ matrix.goos }}
                   GOARCH: ${{ matrix.goarch }}
-                  CGO_ENABLED: 1
+                  #   CGO_ENABLED: 1
               run: |
                   go mod tidy
-                  go build -v -ldflags="-s -w -X main.version=${{ github.ref_name }}" -o quicknav-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }}
+                  CGO_ENABLED=1 go build -v -ldflags="-s -w -X main.version=${{ github.ref_name }}" -o quicknav-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }}
 
             # Add a new step to install cross-compilation tools
             # - name: Set up cross-compilation
