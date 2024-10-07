@@ -17,9 +17,6 @@ jobs:
             matrix:
                 goos: [linux, windows, darwin]
                 goarch: [amd64, arm64]
-                exclude:
-                    - goarch: arm64
-                      goos: windows
         steps:
             - uses: actions/checkout@v4
             - run: git fetch --unshallow --quiet --tags --force
