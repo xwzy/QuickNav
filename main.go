@@ -1,13 +1,11 @@
 package main
 
 import (
-	"embed"
 	"io"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -16,9 +14,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"golang.org/x/net/html"
 )
-
-//go:embed web
-var webFS embed.FS
 
 type Site struct {
 	ID         int    `json:"id"`
@@ -295,11 +290,20 @@ func main() {
 	initDB()
 	defer closeDB()
 
+	// Set up the API server on port 8080
+	go setupAPIServer()
+
+	// Set up the main server on port 80
+	setupMainServer()
+}
+
+func setupAPIServer() {
 	r := gin.Default()
 
 	// Add the logging middleware
 	r.Use(Logger())
 
+	// CORS configuration
 	config := cors.DefaultConfig()
 	config.AllowAllOrigins = true
 	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
@@ -307,48 +311,41 @@ func main() {
 	r.Use(cors.New(config))
 
 	// API routes
-	r.Any("/api/sites", apiSitesHandler)
-	r.Any("/api/categories", apiCategoriesHandler)
-	r.GET("/api/sites/title", apiSiteTitleHandler)
-	r.PUT("/api/categories/order", apiUpdateCategoriesOrderHandler)
-
-	// Static file server
-	r.StaticFS("/static", http.FS(webFS))
-
-	// Check the environment mode
-	mode := os.Getenv("APP_MODE")
-	if mode == "dev" {
-		// Dev mode: Reverse proxy for root requests to localhost:3000
-		r.NoRoute(func(c *gin.Context) {
-			remote, err := url.Parse("http://localhost:3000")
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse upstream URL"})
-				return
-			}
-
-			proxy := httputil.NewSingleHostReverseProxy(remote)
-			proxy.Director = func(req *http.Request) {
-				req.Header = c.Request.Header
-				req.Host = remote.Host
-				req.URL.Scheme = remote.Scheme
-				req.URL.Host = remote.Host
-				req.URL.Path = c.Request.URL.Path
-			}
-
-			proxy.ServeHTTP(c.Writer, c.Request)
-		})
-	} else {
-		// Prod mode: Serve embedded web files
-		r.NoRoute(func(c *gin.Context) {
-			c.FileFromFS(c.Request.URL.Path, http.FS(webFS))
-		})
+	api := r.Group("/api")
+	{
+		api.Any("/sites", apiSitesHandler)
+		api.Any("/categories", apiCategoriesHandler)
+		api.GET("/sites/title", apiSiteTitleHandler)
+		api.PUT("/categories/order", apiUpdateCategoriesOrderHandler)
 	}
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+	log.Println("API server starting on port 8080")
+	r.Run("0.0.0.0:8080")
+}
+
+func setupMainServer() {
+	// Create a reverse proxy for /api requests
+	apiURL, _ := url.Parse("http://localhost:8080")
+	apiProxy := httputil.NewSingleHostReverseProxy(apiURL)
+
+	// Create a file server for serving static files
+	fileServer := http.FileServer(http.Dir("./web"))
+
+	// Set up the main server
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/api") {
+			// Forward API requests to the API server
+			apiProxy.ServeHTTP(w, r)
+		} else {
+			// Serve static files for other requests
+			fileServer.ServeHTTP(w, r)
+		}
+	})
+
+	log.Println("Main server starting on port 80")
+	err := http.ListenAndServe(":80", nil)
+	if err != nil {
+		log.Fatalf("Failed to start main server: %v", err)
 	}
 
-	log.Printf("Server starting on port %s in %s mode\n", port, mode)
-	r.Run("0.0.0.0:" + port)
 }
