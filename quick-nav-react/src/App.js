@@ -1,213 +1,217 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Box, AppBar, Toolbar, Typography, Container, Paper, ThemeProvider, CssBaseline, useMediaQuery, IconButton } from '@mui/material';
-import EditIcon from '@mui/icons-material/Edit';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import GitHubIcon from '@mui/icons-material/GitHub';
-import './App.css';
-import CategoryList from './components/CategoryList';
-import AddCategoryForm from './components/AddCategoryForm';
-import AddSiteForm from './components/AddSiteForm';
-import * as apiService from './api';
+import { 
+  ThemeProvider, 
+  CssBaseline, 
+  Box, 
+  AppBar, 
+  Toolbar, 
+  Typography, 
+  IconButton,
+  Switch,
+  Tooltip,
+  Menu,
+  MenuItem,
+  Drawer,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Divider,
+  useMediaQuery
+} from '@mui/material';
+import {
+  Brightness4,
+  Brightness7,
+  Settings,
+  Dashboard,
+  BookmarkBorder,
+  Note,
+  Task,
+  Build,
+  Menu as MenuIcon,
+  GitHub
+} from '@mui/icons-material';
 import { BrowserRouter as Router, Route, Routes, useNavigate, useLocation } from 'react-router-dom';
-import EditableCategoryList from './components/EditableCategoryList';
-import theme from './theme';
+import { lightTheme, darkTheme } from './theme';
+import DashboardView from './components/DashboardView';
+import BookmarksView from './components/BookmarksView';
+import NotesView from './components/NotesView';
+import TasksView from './components/TasksView';
+import SettingsView from './components/SettingsView';
+import * as api from './api';
+import './App.css';
 
 function App() {
-  const [categories, setCategories] = useState([]);
-  const [sites, setSites] = useState([]);
+  const [darkMode, setDarkMode] = useState(false);
+  const [settings, setSettings] = useState({});
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const isMobile = useMediaQuery(lightTheme.breakpoints.down('md'));
 
   useEffect(() => {
-    fetchCategories();
-    fetchSites();
+    loadSettings();
   }, []);
 
-  const fetchCategories = async () => {
-    const data = await apiService.fetchCategories();
-    setCategories(data);
-  };
-
-  const fetchSites = async () => {
-    const data = await apiService.fetchSites();
-    setSites(data);
-  };
-
-  const addCategory = async (name) => {
-    const success = await apiService.addCategory(name);
-    if (success) {
-      fetchCategories();
-    }
-  };
-
-  const addSite = async (site) => {
-    const success = await apiService.addSite(site);
-    if (success) {
-      fetchSites();
-    }
-  };
-
-  const updateCategoryOrder = async (id, newOrder) => {
-    const success = await apiService.updateCategoryOrder(id, newOrder);
-    if (success) {
-      fetchCategories();
-    }
-  };
-
-  const updateCategory = async (id, name) => {
-    const success = await apiService.updateCategory(id, name);
-    if (success) {
-      fetchCategories();
-    }
-  };
-
-  const deleteCategory = async (id) => {
-    const success = await apiService.deleteCategory(id);
-    if (success) {
-      fetchCategories();
-      fetchSites();
-    }
-  };
-
-  const updateSite = async (site) => {
-    const success = await apiService.updateSite(site);
-    if (success) {
-      fetchSites();
-    }
-  };
-
-  const deleteSite = async (id) => {
-    const success = await apiService.deleteSite(id);
-    if (success) {
-      fetchSites();
-    }
-  };
-
-  const handleReorderCategory = async (categoryId, newIndex) => {
-    const updatedCategories = [...categories];
-    const currentIndex = updatedCategories.findIndex(cat => cat.id === categoryId);
-    const [movedCategory] = updatedCategories.splice(currentIndex, 1);
-    updatedCategories.splice(newIndex, 0, movedCategory);
-
-    // 更新本地状态
-    setCategories(updatedCategories);
-
-    // 立即调用 API 更新服务器端的顺序
+  const loadSettings = async () => {
     try {
-      await apiService.updateCategoriesOrder(updatedCategories);
+      const settingsData = await api.getSettings();
+      setSettings(settingsData);
+      setDarkMode(settingsData.theme === 'dark');
     } catch (error) {
-      console.error('Failed to update categories order:', error);
-      // 如果 API 调用失败，回滚本地状态
-      fetchCategories(); // 重新获取类别列表以确保与服务器同步
+      console.error('Failed to load settings:', error);
     }
   };
 
-  function NavigationButton() {
+  const handleThemeToggle = async () => {
+    const newTheme = !darkMode ? 'dark' : 'light';
+    setDarkMode(!darkMode);
+    try {
+      await api.updateSetting('theme', newTheme);
+    } catch (error) {
+      console.error('Failed to save theme preference:', error);
+    }
+  };
+
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen);
+  };
+
+  const Navigation = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-    const handleNavigation = () => {
-      if (location.pathname === '/') {
-        navigate('/edit');
-      } else {
-        navigate('/');
-      }
-    };
+    const navigationItems = [
+      { text: 'Dashboard', icon: <Dashboard />, path: '/' },
+      { text: 'Bookmarks', icon: <BookmarkBorder />, path: '/bookmarks' },
+      { text: 'Notes', icon: <Note />, path: '/notes' },
+      { text: 'Tasks', icon: <Task />, path: '/tasks' },
+      { text: 'Settings', icon: <Settings />, path: '/settings' },
+    ];
 
-    return (
-      <Button
-        variant="contained"
-        color="secondary"
-        onClick={handleNavigation}
-        startIcon={location.pathname === '/' ? <EditIcon /> : <VisibilityIcon />}
-        sx={{
-          position: 'fixed',
-          bottom: '20px',
-          right: '20px',
-          borderRadius: isMobile ? '50%' : 'default',
-          width: isMobile ? '60px' : 'auto',
-          height: isMobile ? '60px' : 'auto',
-          minWidth: isMobile ? 'unset' : '64px',
-          boxShadow: theme.shadows[4],
-        }}
-      >
-        {!isMobile && (location.pathname === '/' ? 'Edit' : 'View')}
-      </Button>
+    const drawer = (
+      <Box sx={{ width: 250 }}>
+        <Toolbar>
+          <Typography variant="h6" noWrap component="div">
+            Dashboard
+          </Typography>
+        </Toolbar>
+        <Divider />
+        <List>
+          {navigationItems.map((item) => (
+            <ListItem 
+              button 
+              key={item.text}
+              selected={location.pathname === item.path}
+              onClick={() => {
+                navigate(item.path);
+                if (isMobile) setMobileOpen(false);
+              }}
+            >
+              <ListItemIcon>{item.icon}</ListItemIcon>
+              <ListItemText primary={item.text} />
+            </ListItem>
+          ))}
+        </List>
+        <Divider />
+        <List>
+          <ListItem button onClick={() => window.open('https://github.com/xwzy/QuickNav', '_blank')}>
+            <ListItemIcon><GitHub /></ListItemIcon>
+            <ListItemText primary="GitHub" />
+          </ListItem>
+        </List>
+      </Box>
     );
-  }
-
-  function MainContent() {
-    const location = useLocation();
-    const isEditMode = location.pathname === '/edit';
 
     return (
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-        <Routes>
-          <Route path="/" element={
-            <CategoryList
-              categories={categories}
-              sites={sites}
-              updateCategoryOrder={updateCategoryOrder}
-              updateCategory={updateCategory}
-              deleteCategory={deleteCategory}
-              updateSite={updateSite}
-              deleteSite={deleteSite}
-              isEditable={false}
-            />
-          } />
-          <Route path="/edit" element={
-            <CategoryList
-              categories={categories}
-              sites={sites}
-              updateCategory={updateCategory}
-              deleteCategory={deleteCategory}
-              updateSite={updateSite}
-              deleteSite={deleteSite}
-              reorderCategory={handleReorderCategory}
-              isEditable={true}
-            />
-          } />
-        </Routes>
-        {isEditMode && (
-          <Paper elevation={2} sx={{ mt: 4, p: 3, borderRadius: 2 }}>
-            <Typography variant="h5" component="h2" gutterBottom sx={{ mb: 3 }}>
-              Add New Content
-            </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <AddCategoryForm addCategory={addCategory} />
-              <AddSiteForm addSite={addSite} categories={categories} />
-            </Box>
-          </Paper>
+      <>
+        {isMobile ? (
+          <Drawer
+            variant="temporary"
+            anchor="left"
+            open={mobileOpen}
+            onClose={handleDrawerToggle}
+            ModalProps={{ keepMounted: true }}
+            sx={{
+              '& .MuiDrawer-paper': { boxSizing: 'border-box', width: 250 },
+            }}
+          >
+            {drawer}
+          </Drawer>
+        ) : (
+          <Drawer
+            variant="permanent"
+            sx={{
+              width: 250,
+              flexShrink: 0,
+              '& .MuiDrawer-paper': {
+                width: 250,
+                boxSizing: 'border-box',
+              },
+            }}
+          >
+            {drawer}
+          </Drawer>
         )}
-      </Container>
+      </>
     );
-  }
+  };
+
+  const MainContent = () => (
+    <Box
+      component="main"
+      sx={{
+        flexGrow: 1,
+        p: 3,
+        width: { sm: `calc(100% - 250px)` },
+        ml: { sm: '250px' },
+        mt: 8,
+      }}
+    >
+      <Routes>
+        <Route path="/" element={<DashboardView />} />
+        <Route path="/bookmarks" element={<BookmarksView />} />
+        <Route path="/notes" element={<NotesView />} />
+        <Route path="/tasks" element={<TasksView />} />
+        <Route path="/settings" element={<SettingsView onSettingsChange={loadSettings} />} />
+      </Routes>
+    </Box>
+  );
 
   return (
-    <ThemeProvider theme={theme}>
+    <ThemeProvider theme={darkMode ? darkTheme : lightTheme}>
       <CssBaseline />
       <Router>
-        <Box sx={{ flexGrow: 1, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-          <AppBar position="static" color="inherit" elevation={0}>
+        <Box sx={{ display: 'flex' }}>
+          <AppBar
+            position="fixed"
+            sx={{
+              width: { sm: `calc(100% - 250px)` },
+              ml: { sm: '250px' },
+            }}
+          >
             <Toolbar>
-              <Typography variant="h4" component="h1" sx={{ flexGrow: 1, fontWeight: 600 }}>
-                Quick Navigation
+              {isMobile && (
+                <IconButton
+                  color="inherit"
+                  aria-label="open drawer"
+                  edge="start"
+                  onClick={handleDrawerToggle}
+                  sx={{ mr: 2, display: { sm: 'none' } }}
+                >
+                  <MenuIcon />
+                </IconButton>
+              )}
+              <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+                Personal Productivity Dashboard
               </Typography>
-              <IconButton
-                color="inherit"
-                aria-label="GitHub repository"
-                component="a"
-                href="https://github.com/xwzy/QuickNav"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <GitHubIcon />
-              </IconButton>
+              <Tooltip title="Toggle theme">
+                <IconButton color="inherit" onClick={handleThemeToggle}>
+                  {darkMode ? <Brightness7 /> : <Brightness4 />}
+                </IconButton>
+              </Tooltip>
             </Toolbar>
           </AppBar>
-          <Box component="main" sx={{ flexGrow: 1, bgcolor: 'background.default', py: 3 }}>
-            <MainContent />
-          </Box>
-          <NavigationButton />
+          <Navigation />
+          <MainContent />
         </Box>
       </Router>
     </ThemeProvider>
