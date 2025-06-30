@@ -1,12 +1,14 @@
 {
-  "name": "quick-nav-react",
-  "version": "0.1.0",
+  "name": "productivity-dashboard",
+  "version": "2.0.0",
   "private": true,
   "dependencies": {
     "@emotion/react": "^11.13.3",
     "@emotion/styled": "^11.13.0",
     "@mui/icons-material": "^6.1.2",
     "@mui/material": "^6.1.2",
+    "@mui/x-charts": "^7.22.2",
+    "@mui/x-date-pickers": "^7.22.2",
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
@@ -16,6 +18,8 @@
     "react-resizable": "^3.0.5",
     "react-router-dom": "^6.26.2",
     "react-scripts": "5.0.1",
+    "dayjs": "^1.11.13",
+    "recharts": "^2.12.7",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
